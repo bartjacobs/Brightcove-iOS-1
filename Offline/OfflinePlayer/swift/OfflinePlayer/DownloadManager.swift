@@ -206,6 +206,12 @@ class DownloadManager: NSObject {
             
             if testVideo.matches(offlineVideo: video) {
                 if let videoName = video.properties[kBCOVVideoPropertyKeyName] as? String {
+                    // Print Offline Video Status for Downloaded Video
+                    if let offlineVideoStatus = BCOVOfflineVideoManager.shared()!.offlineVideoStatus(forToken: offlineVideoToken) {
+                        print("DOWNLOAD STATE OF DOWNLAODED VIDEO \(offlineVideoStatus.downloadState.rawValue)")
+                    } else {
+                        print("UNABLE TO FIND OFFLINE VIDEO STATUS FOR DOWNLOADED VIDEO")
+                    }
                     UIAlertController.show(withTitle: "Video Already Downloaded", andMessage: "The video \(videoName) is already downloaded (or downloading)")
                     return true
                 }
