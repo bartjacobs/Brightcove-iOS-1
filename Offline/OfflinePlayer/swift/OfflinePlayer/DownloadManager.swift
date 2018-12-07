@@ -185,6 +185,12 @@ class DownloadManager: NSObject {
         guard let offlineVideoTokens = BCOVOfflineVideoManager.shared()?.offlineVideoTokens else {
             return false
         }
+
+        print("============== LIST OFFLINE VIDEO TOKENS ==============")
+        for offlineVideoToken in BCOVOfflineVideoManager.shared()!.offlineVideoTokens {
+            print(offlineVideoToken)
+        }
+        print("=======================================================")
         
         for offlineVideoToken in offlineVideoTokens {
             
