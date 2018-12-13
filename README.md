@@ -11,6 +11,13 @@
 - Build and Run Application on Physical Device
 - Download First Video
 
+## Diagnostic Information
+
+This issue has been reproduced using the latest version of the Brightcove SDK (**6.3.11**) on the following devices:
+- **iPad Pro** running **iOS 12.1**
+- **iPhone 7** running **iOS 12.1**
+- **iPhone 6** running **iOS 11.4**
+
 ## Issues
 
 The Brightcove SDK finds a downloaded video in the application's sandbox and assumes that the video the user selected for download has already been downloaded. This isn't true. Trying to play the downloaded video is unsuccessful since the video is only partially downloaded. A few print statements are added to the sample project to illustrate the underlying issues. The print statements are located in the `videoAlreadyProcessing(_:)` method of the `DownloadManager` class.
