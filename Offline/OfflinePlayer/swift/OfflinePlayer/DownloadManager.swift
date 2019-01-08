@@ -488,6 +488,16 @@ extension DownloadManager: BCOVOfflineVideoManagerDelegate {
             downloadsVC?.updateInfoForSelectedDownload()
             downloadsVC?.refresh()
         }
+        
+        print("++++++++++++++ LIST OFFLINE VIDEO TOKENS ++++++++++++++")
+        for offlineVideoToken in BCOVOfflineVideoManager.shared()!.offlineVideoTokens {
+            if let _ = BCOVOfflineVideoManager.shared()!.offlineVideoStatus(forToken: offlineVideoToken) {
+                print("✅ OFFLINE VIDEO STATUS PRESENT FOR \(offlineVideoToken)")
+            } else {
+                print("🚨 NO OFFLINE VIDEO STATUS PRESENT FOR \(offlineVideoToken)")
+            }
+        }
+        print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++")
     }
     
     func offlineVideoToken(_ offlineVideoToken: String?, didFinishDownloadWithError error: Error?) {
