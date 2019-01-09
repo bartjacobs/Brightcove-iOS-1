@@ -2,35 +2,75 @@
 
 ## Steps to Reproduce
 
-- Clone Repository
-- Navigate to Root of Offline Sample Project for Swift
-- Run `pod install` to Install Dependencies
-- Build and Run Application on Physical Device
-- Download First Video
-- Force Quit Application Before Download Ends
-- Build and Run Application on Physical Device
-- Download First Video
+1. Clone Repository
+2. Navigate to Root of Offline Sample Project for Swift
+3. Run `pod install` to Install Dependencies
+4. Build and Run Application on Physical Device
+5. Download Videos 1 and 2
+6. Wait for Downloads to Complete
+7. Download Video 3
+8. Push Application to Background Before Download of Video 3 Completes
+9. Force Quit Application
+10. Build and Run Application on Physical Device
+11. Download Video 4
 
 ## Diagnostic Information
 
 This issue has been reproduced using the latest version of the Brightcove SDK (**6.3.11**) on the following devices:
 - **iPad Pro** running **iOS 12.1**
-- **iPhone 7** running **iOS 12.1**
+- **iPhone 7** running **iOS 12.1.2**
 - **iPhone 6** running **iOS 11.4**
 
-## Issues
+## Issue
 
-The Brightcove SDK finds a downloaded video in the application's sandbox and assumes that the video the user selected for download has already been downloaded. This isn't true. Trying to play the downloaded video is unsuccessful since the video is only partially downloaded. A few print statements are added to the sample project to illustrate the underlying issues. The print statements are located in the `videoAlreadyProcessing(_:)` method of the `DownloadManager` class.
+The sudden termination of the application results in several issues. The focus of this case is the inability to request the video download status of any download (pending, paused, completed, cancelled, ...) when a download has been interrupted due to the sudden termination of the application.
 
-### Issue 1
+The problem is clearly visible when the user launches the application after force quitting it (step 10). The application indicates that videos 1, 2, and 3 have not been downloaded. The problem becomes evident when the download of video 4 is initiated (step 11). A few print statements have been added to the `offlineVideoToken(_:downloadTask:didProgressTo:)` method, a method defined by the `BCOVOfflineVideoManagerDelegate` protocol. Every time the Brightcove SDK invokes this method, the `DownloadManager` instance asks the Brightcove SDK for the video download status of each download and prints it to the console.
 
-The Brightcove SDK is unable to provide the status of the download. A print statement is added to the `videoAlreadyProcessing(_:)` method of the `DownloadManager` class to illustrate this (lines 195-199). The `offlineVideoStatus()` method of the `DownloadManager` class returns an empty array even though the application's container contains the status of the download that was interrupted.
+```
+func offlineVideoToken(_ offlineVideoToken: String?, downloadTask: AVAssetDownloadTask?, didProgressTo progressPercent: TimeInterval) {
+		// This delegate method reports progress for the primary video download
+		let percentString = String(format: "%0.2f", progressPercent)
+		print("Offline download didProgressTo: \(percentString) for token: \(offlineVideoToken!)")
 
-### Issue 2
+		DispatchQueue.main.async {
+				NotificationCenter.default.post(name: OfflinePlayerNotifications.UpdateStatus, object: nil)
+				let downloadsVC = AppDelegate.current().tabBarController.downloadsViewController()
+				downloadsVC?.updateInfoForSelectedDownload()
+				downloadsVC?.refresh()
+		}
 
-The status of the download is incorrect. On lines 189-193, the application lists the offline video tokens the Brightcove SDK is aware of. Even though it includes the offline video token of the interrupted download, requesting the status for the offline video token of the download is unsuccessful. The `offlineVideoStatus(forToken:)` method returns `nil` if the offline video token of the interrupted download is passed in as an argument.
+		print("++++++++++++++ LIST OFFLINE VIDEO TOKENS ++++++++++++++")
+		for offlineVideoToken in BCOVOfflineVideoManager.shared()!.offlineVideoTokens {
+				if let _ = BCOVOfflineVideoManager.shared()!.offlineVideoStatus(forToken: offlineVideoToken) {
+						print("✅ OFFLINE VIDEO STATUS PRESENT FOR \(offlineVideoToken)")
+				} else {
+						print("🚨 NO OFFLINE VIDEO STATUS PRESENT FOR \(offlineVideoToken)")
+				}
+		}
+		print("+++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+}
+```
 
-If you browse the application's container, then you find the property list that includes the status of the interrupted downloaded. This is what it looks like. It shows that the download wasn't completed successfully due to an error. The reason of the failure isn't specified.
+The Brightcove SDK is only able to return the video download status of downloads that are initiated after the sudden termination of the application. Even though videos 1 and 2 have been successfully downloaded by the application, the Brightcove SDK is unable to return the video download status of these downloads.
+
+```
+Offline download didProgressTo: 85.36 for token: 1E658EC7-867D-4153-8679-A02C75274E07
+++++++++++++++ LIST OFFLINE VIDEO TOKENS ++++++++++++++
+🚨 NO OFFLINE VIDEO STATUS PRESENT FOR 537F6B03-7D0C-4E3F-9FA4-7D8232C182CC
+🚨 NO OFFLINE VIDEO STATUS PRESENT FOR 02562534-E78A-409D-B8AA-BAF31133C58B
+🚨 NO OFFLINE VIDEO STATUS PRESENT FOR 5F033E40-0395-4D72-AE4E-16A8FE6F6E64
+✅ OFFLINE VIDEO STATUS PRESENT FOR 39E59A1C-C0AB-4708-A911-077CEE0B615A
++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+```
+
+### Consequences
+
+Because of this issue, it's impossible for the application to know what the video download status of a download is. This means that the application isn't able to show the user the status of each download. It also doesn't know whether a video is available for offline playback. Having the ability to request the video download status of a download is essential for video downloads.
+
+### Other Findings
+
+If you browse the application's container, then you find the property list that includes the status of the interrupted download. This is what it looks like. It shows that the download wasn't completed successfully due to an error. The reason of the failure isn't specified.
 
 ```
 <?xml version="1.0" encoding="UTF-8"?>
@@ -76,11 +116,3 @@ If you browse the application's container, then you find the property list that 
 ```
 
 The folder also contains other information, such as the properties of the video, the poster and thumbnail images of the video, and the parameters of the download request.
-
-## Problem
-
-When the user force quits the application or the application is abruptly terminated by the system of due to a fatal issue, any downloads that are in progress can end up in an unknown state. The Brigthcove SDK currently doesn't return the correct status of such downloads. In addition, the Brightcove SDK provides incorrect information regarding the status of the download. The offline video manager returns a valid `BCOVVideo` instance if the offline video token of the problematic download is given, but it isn't able to return the status of the download.
-
-## Conclusion
-
-It's currently not possible to obtain the true status of a download that has been interrupted in the way described earlier using the API of the Brightcove SDK.
